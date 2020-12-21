@@ -27,20 +27,33 @@ private:
 private:
     static const uint32_t FrameCount = 2;
 
+    struct Vertex
+    {
+        DirectX::XMFLOAT3 position;
+        DirectX::XMFLOAT4 color;
+    };
+
     // Pipeline objects.
+    CD3DX12_VIEWPORT m_Viewport;
+    CD3DX12_RECT m_ScissorRect;
     Microsoft::WRL::ComPtr<IDXGISwapChain3> m_SwapChain;
     Microsoft::WRL::ComPtr<ID3D12Device> m_Device;
     Microsoft::WRL::ComPtr<ID3D12Resource> m_RenderTargets[FrameCount];
     Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_CommandQueue;
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState;
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
     uint32_t m_rtvDescriptorSize;
 
+    // App resources.
+    Microsoft::WRL::ComPtr<ID3D12Resource> m_VertexBuffer;
+    D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
+
     // Synchronization objects.
     uint32_t m_FrameIndex;
-    HANDLE m_FenceEvent;
+    HANDLE m_FenceEvent; // could be typed as "void *" instead?
     Microsoft::WRL::ComPtr<ID3D12Fence> m_Fence;
     uint64_t m_FenceValue;
 };

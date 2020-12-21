@@ -9,7 +9,7 @@ int Window::Run( DXSample* pSample, HINSTANCE hInstance, int nCmdShow )
     WNDCLASSEX wc = { 0 };
     wc.cbSize = sizeof( wc );
     wc.style = CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc = &WindowProc;
+    wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor( nullptr, IDC_ARROW );
     wc.lpszClassName = L"DXSampleClass";
@@ -74,13 +74,13 @@ LRESULT CALLBACK Window::WindowProc( HWND hWnd, UINT message, WPARAM wParam, LPA
         return 0;
 
         // TODO: Move into main loop after D312 is confirmed to be running.
-        case WM_PAINT:
-            if (pSample)
-            {
+        //case WM_PAINT:
+        //  if (pSample)
+        //   {
                // pSample->OnUpdate();
                // pSample->OnRender();
-            }
-            return 0;
+        //   }
+        //   return 0;
         case WM_DESTROY:
             PostQuitMessage( 0 );
             return 0;

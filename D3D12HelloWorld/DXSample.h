@@ -13,7 +13,7 @@
 
 #include "DXSampleHelper.h"
 #include "Window.h"
-#include <dxgi1_6.h>
+//#include <dxgi1_6.h>
 
 class DXSample
 {
