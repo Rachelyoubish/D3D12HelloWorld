@@ -1,13 +1,13 @@
 #pragma once
 
-#include "DXSample.h"
+#include "App.h"
 
-class DXSample;
+class App;
 
 class Window
 {
 public:
-    static int Run( DXSample* pSample, HINSTANCE hInstance, int nCmdShow );
+    static int Run( App* pSample, HINSTANCE hInstance, int nCmdShow );
     static HWND GetHwnd() { return m_hWnd; }
 
 private:

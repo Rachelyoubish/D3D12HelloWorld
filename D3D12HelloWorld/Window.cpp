@@ -3,7 +3,7 @@
 
 HWND Window::m_hWnd = nullptr;
 
-int Window::Run( DXSample* pSample, HINSTANCE hInstance, int nCmdShow )
+int Window::Run( App* pSample, HINSTANCE hInstance, int nCmdShow )
 {
     // Initialize the window class.
     WNDCLASSEX wc = { 0 };
@@ -61,7 +61,7 @@ int Window::Run( DXSample* pSample, HINSTANCE hInstance, int nCmdShow )
 
 LRESULT CALLBACK Window::WindowProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
-    DXSample* pSample = reinterpret_cast<DXSample*>( GetWindowLongPtr( hWnd, GWLP_USERDATA ) );
+    App* pSample = reinterpret_cast<App*>( GetWindowLongPtr( hWnd, GWLP_USERDATA ) );
 
     switch (message)
     {

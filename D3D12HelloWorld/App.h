@@ -1,6 +1,7 @@
 #pragma once
 
-#include "DXSample.h"
+#include "Helpers.h"
+#include "Window.h"
 
 // Note that while ComPtr is used to manage the lifetime of resources on the CPU,
 // it has no understanding of the lifetime of resources on the GPU. Apps must account
@@ -8,21 +9,33 @@
 // referenced by the GPU.
 // An example of this can be found in the class method: OnDestroy().
 
-class App : public DXSample
+class App
 {
 public:
     App( uint32_t width, uint32_t height, std::wstring name );
 
-    virtual void OnInit() override;
-    virtual void OnUpdate() override;
-    virtual void OnRender() override;
-    virtual void OnDestroy() override;
+    virtual void OnInit();
+    virtual void OnUpdate();
+    virtual void OnRender();
+    virtual void OnDestroy();
 
-private:
     void LoadPipeline();
     void LoadAssets();
     void PopulateCommandList();
     void WaitForPreviousFrame();
+
+    // Accessors.
+    uint32_t GetWidth() const { return m_width; }
+    uint32_t GetHeight() const { return m_height; }
+    const wchar_t* GetTitle() const { return m_title.c_str(); }
+
+private:
+    std::wstring GetAssetFullPath( LPCWSTR assetName );
+
+    void GetHardwareAdapter(
+        _In_ IDXGIFactory1* pFactory,
+        _Outptr_result_maybenull_ IDXGIAdapter1** ppAdapter,
+        bool requestHighPerformanceAdapter = false );
 
 private:
     static const uint32_t FrameCount = 2;
@@ -32,6 +45,21 @@ private:
         DirectX::XMFLOAT3 position;
         DirectX::XMFLOAT4 color;
     };
+
+    // Viewport dimensions.
+    uint32_t m_width;
+    uint32_t m_height;
+    float m_aspectRatio;
+
+    // Adapter info.
+    bool m_useWarpDevice;
+
+private:
+    // Root assets path.
+    std::wstring m_assetsPath;
+
+    // Window title.
+    std::wstring m_title;
 
     // Pipeline objects.
     CD3DX12_VIEWPORT m_Viewport;
@@ -53,7 +81,7 @@ private:
 
     // Synchronization objects.
     uint32_t m_FrameIndex;
-    HANDLE m_FenceEvent; // could be typed as "void *" instead?
+    HANDLE m_FenceEvent;
     Microsoft::WRL::ComPtr<ID3D12Fence> m_Fence;
     uint64_t m_FenceValue;
 };
