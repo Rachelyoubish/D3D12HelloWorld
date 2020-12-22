@@ -23,7 +23,9 @@ public:
     void LoadAssets();
     std::vector<uint8_t> GenerateTextureData();
     void PopulateCommandList();
-    void WaitForPreviousFrame();
+    // void WaitForPreviousFrame();
+    void MoveToNextFrame();
+    void WaitForGpu();
 
     // Accessors.
     uint32_t GetWidth() const { return m_width; }
@@ -71,7 +73,7 @@ private:
     Microsoft::WRL::ComPtr<IDXGISwapChain3> m_SwapChain;
     Microsoft::WRL::ComPtr<ID3D12Device> m_Device;
     Microsoft::WRL::ComPtr<ID3D12Resource> m_RenderTargets[FrameCount];
-    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
+    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_CommandAllocators[FrameCount];
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_CommandQueue;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
@@ -89,5 +91,5 @@ private:
     uint32_t m_FrameIndex;
     HANDLE m_FenceEvent;
     Microsoft::WRL::ComPtr<ID3D12Fence> m_Fence;
-    uint64_t m_FenceValue;
+    uint64_t m_FenceValues[FrameCount];
 };
