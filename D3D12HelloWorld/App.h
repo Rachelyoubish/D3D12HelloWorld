@@ -49,8 +49,15 @@ private:
     struct Vertex
     {
         DirectX::XMFLOAT3 position;
-        DirectX::XMFLOAT2 uv;
+        DirectX::XMFLOAT4 color;
     };
+
+    struct SceneConstantBuffer
+    {
+        DirectX::XMFLOAT4 offset; // 16 bytes.
+        float padding[60];        // Padding so the constant buffer is 256-byte aligned.
+    };                            // Padding equals 240-bytes, so: 240 + 16 = 256.
+    static_assert( ( sizeof( SceneConstantBuffer ) % 256 ) == 0, "Constant Buffer size must be 256-byte aligned" );
 
     // Viewport dimensions.
     uint32_t m_width;
@@ -78,6 +85,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvHeap;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvHeap;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState;
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
     uint32_t m_rtvDescriptorSize;
@@ -86,6 +94,9 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> m_VertexBuffer;
     D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
     Microsoft::WRL::ComPtr<ID3D12Resource> m_Texture;
+    Microsoft::WRL::ComPtr<ID3D12Resource> m_ConstantBuffer;
+    SceneConstantBuffer m_ConstantBufferData;
+    uint8_t* m_pCbvDataBegin;
 
     // Synchronization objects.
     uint32_t m_FrameIndex;
