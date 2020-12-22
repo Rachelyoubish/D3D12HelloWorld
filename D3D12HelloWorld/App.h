@@ -14,13 +14,14 @@ class App
 public:
     App( uint32_t width, uint32_t height, std::wstring name );
 
-    virtual void OnInit();
-    virtual void OnUpdate();
-    virtual void OnRender();
-    virtual void OnDestroy();
+    void OnInit();
+    void OnUpdate();
+    void OnRender();
+    void OnDestroy();
 
     void LoadPipeline();
     void LoadAssets();
+    std::vector<uint8_t> GenerateTextureData();
     void PopulateCommandList();
     void WaitForPreviousFrame();
 
@@ -39,11 +40,14 @@ private:
 
 private:
     static const uint32_t FrameCount = 2;
+    static const uint32_t TextureWidth = 256;
+    static const uint32_t TextureHeight = 256;
+    static const uint32_t TexturePixelSize = 4;    // The number of bytes used to represent a pixel in the texture.
 
     struct Vertex
     {
         DirectX::XMFLOAT3 position;
-        DirectX::XMFLOAT4 color;
+        DirectX::XMFLOAT2 uv;
     };
 
     // Viewport dimensions.
@@ -71,6 +75,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_CommandQueue;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvHeap;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState;
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
     uint32_t m_rtvDescriptorSize;
@@ -78,6 +83,7 @@ private:
     // App resources.
     Microsoft::WRL::ComPtr<ID3D12Resource> m_VertexBuffer;
     D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
+    Microsoft::WRL::ComPtr<ID3D12Resource> m_Texture;
 
     // Synchronization objects.
     uint32_t m_FrameIndex;

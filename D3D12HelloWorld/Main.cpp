@@ -9,6 +9,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow )
    // be rendered in a DPI sensitive fashion.
     SetThreadDpiAwarenessContext( DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 );
 
-    App sample( 1280, 720, L"D3D12 Hello Window" );
+    App sample( 1280, 720, L"D3D12 Hello Texture" );
     return Window::Run( &sample, hInstance, nCmdShow );
 }
