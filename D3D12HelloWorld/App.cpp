@@ -4,11 +4,9 @@
 App::App( uint32_t width, uint32_t height, std::wstring name )
     : m_width(width), m_height(height), m_title( name ),
     m_FrameIndex( 0 ),
-    m_pCbvDataBegin(nullptr),
     m_Viewport( 0.0f, 0.0f, static_cast<float>( width ), static_cast<float>( height ) ),
     m_ScissorRect( 0, 0, static_cast<LONG>( width ), static_cast<LONG>( height ) ),
     m_rtvDescriptorSize( 0 ),
-    m_ConstantBufferData{},
     m_useWarpDevice(false)
 {
     WCHAR assetsPath[512];
@@ -28,15 +26,6 @@ void App::OnInit()
 // Update frame-based values.
 void App::OnUpdate()
 {
-    const float translationSpeed = 0.005f;
-    const float offsetBounds = 1.25f;
-
-    m_ConstantBufferData.offset.x += translationSpeed;
-    if (m_ConstantBufferData.offset.x > offsetBounds)
-    {
-        m_ConstantBufferData.offset.x = -offsetBounds;
-    }
-    memcpy( m_pCbvDataBegin, &m_ConstantBufferData, sizeof( m_ConstantBufferData ) );
 }
 
 // Render the scene.
@@ -152,15 +141,6 @@ void App::LoadPipeline()
         ThrowIfFailed( m_Device->CreateDescriptorHeap( &rtvHeapDesc, IID_PPV_ARGS( &m_rtvHeap ) ) );
 
         m_rtvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_RTV );
-
-        // Describe and create a constant buffer view (CBV) descriptor heap.
-        // Flags indicate that this descriptor heap can be bound to the pipeline
-        // and that descriptors contained in it can be referenced by a root table.
-        D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-        cbvHeapDesc.NumDescriptors = 1;
-        cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        ThrowIfFailed( m_Device->CreateDescriptorHeap( &cbvHeapDesc, IID_PPV_ARGS( &m_cbvHeap ) ) );
     }
 
     // Create frame resources.
@@ -177,6 +157,8 @@ void App::LoadPipeline()
             ThrowIfFailed( m_Device->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &m_CommandAllocators[n] ) ) );
         }
     }
+
+    ThrowIfFailed( m_Device->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_BUNDLE, IID_PPV_ARGS( &m_BundleAllocator ) ) );
 }
 
 
@@ -195,22 +177,8 @@ void App::LoadAssets()
             featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
         }
 
-        CD3DX12_DESCRIPTOR_RANGE1 ranges[1];
-        CD3DX12_ROOT_PARAMETER1 rootParameters[1];
-        
-        ranges[0].Init( D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC );
-        rootParameters[0].InitAsDescriptorTable( 1, &ranges[0], D3D12_SHADER_VISIBILITY_VERTEX );
-
-        // Allow input layout and deny uneccessary access to certain pipeline stages.
-        D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-            D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-            D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-            D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
-            D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
-
         CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
-        rootSignatureDesc.Init_1_1( _countof(rootParameters), rootParameters, 0, nullptr, rootSignatureFlags );
+        rootSignatureDesc.Init_1_1( 0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT );
 
         Microsoft::WRL::ComPtr<ID3DBlob> signature;
         Microsoft::WRL::ComPtr<ID3DBlob> error;
@@ -298,30 +266,14 @@ void App::LoadAssets()
         m_VertexBufferView.SizeInBytes = vertexBufferSize;
     }
 
-    // Create the constant buffer.
+    // Create and record the bundle. 
     {
-        const uint32_t constantBufferSize = sizeof( SceneConstantBuffer ); // CB size is required to be 256-byte aligned.
-
-        ThrowIfFailed( m_Device->CreateCommittedResource(
-            &CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_UPLOAD ),
-            D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Buffer( constantBufferSize ),
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS( &m_ConstantBuffer )
-        ) );
-
-        // Describe and create a constant buffer view.
-        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-        cbvDesc.BufferLocation = m_ConstantBuffer->GetGPUVirtualAddress();
-        cbvDesc.SizeInBytes = constantBufferSize;
-        m_Device->CreateConstantBufferView( &cbvDesc, m_cbvHeap->GetCPUDescriptorHandleForHeapStart() );
-
-        // Map and initialize the constant buffer. We don't unmap this until the 
-        // app closes. Keeping things mapped for the lifetime of the resource is okay.
-        CD3DX12_RANGE readRange( 0, 0 ); // We do not intend to read from this resource on the CPU.
-        ThrowIfFailed( m_ConstantBuffer->Map( 0, &readRange, reinterpret_cast<void**>( &m_pCbvDataBegin ) ) );
-        memcpy( m_pCbvDataBegin, &m_ConstantBufferData, sizeof( m_ConstantBufferData ) );
+        ThrowIfFailed( m_Device->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_BUNDLE, m_BundleAllocator.Get(), m_PipelineState.Get(), IID_PPV_ARGS( &m_Bundle ) ) );
+        m_Bundle->SetGraphicsRootSignature( m_RootSignature.Get() );
+        m_Bundle->IASetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+        m_Bundle->IASetVertexBuffers( 0, 1, &m_VertexBufferView );
+        m_Bundle->DrawInstanced( 3, 1, 0, 0 );
+        ThrowIfFailed( m_Bundle->Close() );
     }
 
     // Close the command list and execute it to begin the initial GPU setup.
@@ -348,43 +300,6 @@ void App::LoadAssets()
     }
 }
 
-// Generate a simple black and white checkerboard texture.
-std::vector<uint8_t> App::GenerateTextureData()
-{
-    const uint32_t rowPitch = TextureWidth * TexturePixelSize;
-    const uint32_t cellPitch = rowPitch >> 3;        // The width of a cell in the checkboard texture.
-    const uint32_t cellHeight = TextureWidth >> 3;    // The height of a cell in the checkerboard texture.
-    const uint32_t textureSize = rowPitch * TextureHeight;
-
-    std::vector<uint8_t> data(textureSize);
-    uint8_t* pData = &data[0];
-
-    for (uint32_t n = 0; n < textureSize; n += TexturePixelSize)
-    {
-        uint32_t x = n % rowPitch;
-        uint32_t y = n / rowPitch;
-        uint32_t i = x / cellPitch;
-        uint32_t j = y / cellHeight;
-
-        if (i % 2 == j % 2)
-        {
-            pData[n] = 0x00;        // R
-            pData[n + 1] = 0x00;    // G
-            pData[n + 2] = 0x00;    // B
-            pData[n + 3] = 0xff;    // A
-        }
-        else
-        {
-            pData[n] = 0xff;        // R
-            pData[n + 1] = 0xff;    // G
-            pData[n + 2] = 0xff;    // B
-            pData[n + 3] = 0xff;    // A
-        }
-    }
-
-    return data;
-}
-
 void App::PopulateCommandList()
 {
     // Command list allocators can only be reset when the associated 
@@ -399,11 +314,6 @@ void App::PopulateCommandList()
 
     // Set necessary state.
     m_CommandList->SetGraphicsRootSignature( m_RootSignature.Get() );
-
-    ID3D12DescriptorHeap* ppHeaps[] = { m_cbvHeap.Get() };
-    m_CommandList->SetDescriptorHeaps( _countof( ppHeaps ), ppHeaps );
-
-    m_CommandList->SetGraphicsRootDescriptorTable( 0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart() );
     m_CommandList->RSSetViewports( 1, &m_Viewport );
     m_CommandList->RSSetScissorRects( 1, &m_ScissorRect );
 
@@ -417,9 +327,9 @@ void App::PopulateCommandList()
     // Record commands.
     const float clearColor[] = { 0.16f, 0.16f, 0.16f, 1.0f };
     m_CommandList->ClearRenderTargetView( rtvHandle, clearColor, 0, nullptr );
-    m_CommandList->IASetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-    m_CommandList->IASetVertexBuffers( 0, 1, &m_VertexBufferView );
-    m_CommandList->DrawInstanced( 3, 1, 0, 0 );
+    
+    // Execute the commands stored in the bundle.
+    m_CommandList->ExecuteBundle( m_Bundle.Get() );
 
     // Indicate that the back buffer will now be used to present.
     auto present = CD3DX12_RESOURCE_BARRIER::Transition( m_RenderTargets[m_FrameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT );

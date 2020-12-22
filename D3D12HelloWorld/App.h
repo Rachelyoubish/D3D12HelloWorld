@@ -21,7 +21,6 @@ public:
 
     void LoadPipeline();
     void LoadAssets();
-    std::vector<uint8_t> GenerateTextureData();
     void PopulateCommandList();
     // void WaitForPreviousFrame();
     void MoveToNextFrame();
@@ -42,22 +41,12 @@ private:
 
 private:
     static const uint32_t FrameCount = 2;
-    static const uint32_t TextureWidth = 256;
-    static const uint32_t TextureHeight = 256;
-    static const uint32_t TexturePixelSize = 4;    // The number of bytes used to represent a pixel in the texture.
 
     struct Vertex
     {
         DirectX::XMFLOAT3 position;
         DirectX::XMFLOAT4 color;
     };
-
-    struct SceneConstantBuffer
-    {
-        DirectX::XMFLOAT4 offset; // 16 bytes.
-        float padding[60];        // Padding so the constant buffer is 256-byte aligned.
-    };                            // Padding equals 240-bytes, so: 240 + 16 = 256.
-    static_assert( ( sizeof( SceneConstantBuffer ) % 256 ) == 0, "Constant Buffer size must be 256-byte aligned" );
 
     // Viewport dimensions.
     uint32_t m_width;
@@ -81,22 +70,18 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Device> m_Device;
     Microsoft::WRL::ComPtr<ID3D12Resource> m_RenderTargets[FrameCount];
     Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_CommandAllocators[FrameCount];
+    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_BundleAllocator;
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_CommandQueue;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvHeap;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvHeap;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState;
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
+    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_Bundle;
     uint32_t m_rtvDescriptorSize;
 
     // App resources.
     Microsoft::WRL::ComPtr<ID3D12Resource> m_VertexBuffer;
     D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
-    Microsoft::WRL::ComPtr<ID3D12Resource> m_Texture;
-    Microsoft::WRL::ComPtr<ID3D12Resource> m_ConstantBuffer;
-    SceneConstantBuffer m_ConstantBufferData;
-    uint8_t* m_pCbvDataBegin;
 
     // Synchronization objects.
     uint32_t m_FrameIndex;
